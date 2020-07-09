@@ -1,14 +1,11 @@
 import os
 import pandas as pd
-from sklearn import ensemble
-from sklearn import preprocessing
-from sklearn import metrics
 import joblib
 import numpy as np
 from src import constants
-from src import dispatcher
+from fastai.tabular import *
 
-MODEL = "randomforest"
+MODEL = "fastai"
 
 
 def predict():
@@ -24,18 +21,26 @@ def predict():
     for FOLD in range(5):
         print(FOLD)
         df = pd.read_csv(constants.TEST_DATA)
-        encoders = joblib.load(os.path.join(constants.MODELS,f"{MODEL}_{FOLD}_label_encoder.pkl"))
-        cols = joblib.load(os.path.join(constants.MODELS,f"{MODEL}_{FOLD}_columns.pkl"))
-        for c in encoders:
-            print(c)
-            lbl = encoders[c]
-            df.loc[:, c] = lbl.transform(df[c].values.tolist())
+        if MODEL!= 'fastai':
+            encoders = joblib.load(os.path.join(constants.MODELS,f"{MODEL}_{FOLD}_label_encoder.pkl"))
+            cols = joblib.load(os.path.join(constants.MODELS,f"{MODEL}_{FOLD}_columns.pkl"))
+            for c in encoders:
+                print(c)
+                lbl = encoders[c]
+                df.loc[:, c] = lbl.transform(df[c].values.tolist())
 
-        # data is ready to train
-        clf = joblib.load(os.path.join(constants.MODELS,f"{MODEL}_{FOLD}.pkl"))
+            # data is ready to train
+            clf = joblib.load(os.path.join(constants.MODELS,f"{MODEL}_{FOLD}.pkl"))
 
-        df = df[cols]
-        preds = clf.predict_proba(df)[:, 1]
+            df = df[cols]
+            preds = clf.predict_proba(df)[:, 1]
+        elif MODEL =='fastai':
+            cols = joblib.load(os.path.join(constants.MODELS, f"{MODEL}_{FOLD}_columns.pkl"))
+            clf = load_learner(path=constants.MODELS, file=f"{MODEL}_{FOLD}.pkl",
+                         test=TabularList.from_df(df[cols]) )
+            preds=clf.get_preds(ds_type=DatasetType.Test)[0][:,1]
+        else:
+            raise Exception('Model: $s not defined'%MODEL)
 
         if FOLD == 0:
             predictions = preds
